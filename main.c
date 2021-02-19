@@ -1,6 +1,6 @@
 /*********************************************************************
  * Tic-Tac-Toe Game  
- *********************************************************************
+ * ===================================================================
  * NAMA FILE    : main.c
  * AUTHOR       : Ihsan Fauzan Hanif & Syelvie Ira Ratna Mulia
  * COMPILER     : MinGW GCC
@@ -10,39 +10,53 @@
 
 /**
  * Header File
+ * ===================================================================
+ * File yang mengandung modul dan makro di mana dapat secara langsung
+ * digunakan tanpa perlu dibuat secara manual.
  */
-#include <conio.h>
-#include <ctype.h>
-#include <direct.h>
-#include <errno.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
-#include <windows.h>
+#include <conio.h>      // Console input output
+#include <ctype.h>      // C-type
+#include <direct.h>     // Direktori
+#include <errno.h>      // Error condition
+#include <pthread.h>    // Threading
+#include <stdbool.h>    // Standard boolean
+#include <stdio.h>      // Standard input output
+#include <stdlib.h>     // Standard library
+#include <string.h>     // String
+#include <sys/stat.h>   // File info
+#include <time.h>       // Time'h
+#include <unistd.h>     // Unix standard
+#include <windows.h>    // Windows API
 
 /**
- * Makro
+ * Makro Preprocessor
+ * ===================================================================
+ * Bagian kode program yang diberi nama di mana kemudian ditransformasi
+ * menjadi konten yang dimaksud oleh makro ketika proses kompilasi
  */
-//#define DEBUG
-#define GAME_TIMER 10
-#define KEYBOARD_ENTER 13
-#define KEYBOARD_ESC 27
-#define MAX_SAVEGAME 5
-#define SIMBOL_P1 'X'
-#define SIMBOL_P2 'O'
-#define START_MINIMAX_5x5 22
+
+//#define DEBUG                 // Mode kompilasi
+#define GAME_TIMER 10           // Waktu setiap giliran (satuan detik)
+#define KEYBOARD_ENTER 13       // Nomor ASCII untuk Enter Key
+#define KEYBOARD_ESC 27         // Nomor ASCII untuk Escape Key
+#define MAX_SAVEGAME 5          // Batasan data permainan yang bisa disimpan
+#define SIMBOL_P1 'X'           // Simbol pemain pertama
+#define SIMBOL_P2 'O'           // Simbol pemain kedua
+
+/**
+ * Awal perhitungan minimax pada papan dengan ukuran terkait berdasarkan
+ * jumlah petak yang dapat diisi
+ */ 
+#define START_MINIMAX_5x5 22 
 #define START_MINIMAX_7x7 46
 
-#ifdef DEBUG // DEBUG VERSION
+#ifdef DEBUG
+    // Makro yang tersedia apabila DEBUG terdefinisi.
     #define PATH_CARA "D:/Arsip Kuliah/Coding/TicTacToe-Game/debug/CaraBermain.txt"
     #define PATH_SKOR "D:/Arsip Kuliah/Coding/TicTacToe-Game/debug/skor"
     #define PATH_GAME "D:/Arsip Kuliah/Coding/TicTacToe-Game/debug/game/save"
-#else // RELEASE VERSION
+#else
+    // Makro yang tersedia apabila DEBUG tidak terdefinisi.
     #define PATH_GAME "game/save"
     #define PATH_CARA "CaraBermain.txt"
     #define PATH_SKOR "skor"
@@ -50,8 +64,12 @@
 
 /**
  * Enumerasi
+ * ===================================================================
+ * Nama yang merepresentasikan nilai tertentu yang sesuai dengan apa
+ * yang telah didefinisikan berikut
  */
 
+// Nilai waktu yang digunakan untuk mendeterminasi hasil input
 typedef enum
 {
     TERLAMBAT = -1,
@@ -61,49 +79,66 @@ typedef enum
 
 /**
  * Struktur
+ * ===================================================================
+ * Tipe data bentukan yang terdiri dari tipe data tertentu di mana
+ * berfungsi untuk mengelompokkan data berdasarkan tujuan penggunaannya
  */
+
+// Tipe Data Pemain
 typedef struct
 {
-	bool isKomputer;
-	char nama[50];
-	char simbol;
-	int input;
-	long long int skor;
+	bool isKomputer;    // TRUE apabila pemain adalah komputer
+	char nama[50];      // Nama pemain
+	char simbol;        // Simbol yang digunakan pada permainan
+	int input;          // Input petak permainan
+	long long int skor; // Skor pemain
 } Pemain;
 
+// Tipe Data Papan permainan
 typedef struct 
 {
-    char nama[25];
-	int ukuran;
-	int waktu;
-	int kesulitan;
-	int giliran;
-	bool isBermain;
-	char isi[10][10];
-	Pemain pemain[2];
+    char nama[25];      // Label pada savegame untuk menyimpan identitas papan
+	int ukuran;         // Ukuran papan (banyak petak secara horizontal & vertikal)
+	int waktu;          // Waktu yang masih tersedia (satuan detik)
+	int kesulitan;      // Tingkat kesulitan ketika melawan komputer
+	int giliran;        // Giliran pemain, 0 = pemain ke-1, 1 = pemain ke-2
+	char isi[10][10];   // Isi pada petak permainan
+	Pemain pemain[2];   // Data para pemain
 } Papan;
 
+// Tipe Data Skor
 typedef struct
 {
-    char nama[50];
-    char kesulitan[10];
-    int skor;
+    char nama[50];      // Nama pemain yang disimpan
+    char kesulitan[10]; // Tingkat kesulitan yang dimainkan dalam bentuk kata
+    int skor;           // Skor yang telah diperoleh pemain
 } SkorInfo;
 
 /**
  * Variable Global
+ * ===================================================================
+ * Variable yang dapat diakses di seluruh lingkup kode program dan
+ * dapat terus digunakan oleh program hingga program dihentikan
  */
-HANDLE hConsole;
-WORD consoleAttr;
-pthread_t thTimer, thGame;
-bool inputValid = true;
-bool jeda = false;
-int idPapan = 0; // 0 = papan baru
-Papan papan;
-SkorInfo sInfo[10];
+HANDLE hConsole;            // Console handler
+WORD consoleAttr;           // Atribut console
+pthread_t thTimer, thGame;  // Handle Thread/proses yang dieksekusi
+bool inputValid = true;     // FALSE apabila input tidak sesuai dengan yang diminta
+bool jeda = false;          // TRUE apabila permainan tengah dijeda
+int idPapan = 0;            // 0 = papan baru, dan tertentu sesuai dengan id papan permainan 
+                            // yang dipilih apabila melanjutkan permainan
+Papan papan;                // Papan permainan
+SkorInfo sInfo[10];         // Data dari daftar 10 pemain dengan skor tertinggi
 
 /**
  * Prototipe Modul
+ * ===================================================================
+ * Deklarasi modul yang menginformasikan pada kompiler terkait dengan
+ * fungsi yang nanti dapat digunakan pada program
+ * 
+ * Hal ini karena proses pembacaan fungsi bersifat mengalir dari atas ke
+ * bawah di mana isi fungsi yang berada di atas tidak bisa membaca isi
+ * fungsi dibawahnya sehingga perlu prototipe terlebih dahulu
  */
 void bagianCara();
 void bagianMain();
@@ -168,44 +203,67 @@ void upperCase(char*);
 
 /**
  * Entry Point
+ * ===================================================================
+ * Bagian program yang dieksekusi pada awal program ketika dijalankan
  */
 int main(int argc, char *argv[])
 {
     initComponent();
 	menuUtama();
-	return 0;
+	// Indikasi dari program dapat dieksekusi secara sukses
+    return 0;
 }
 
 /**
  * Implementasi Modul
+ * ===================================================================
+ * Pernyataan atau isi dari modul yang memberikan pernyataan terkait
+ * dengan apa yang dilakukan oleh modul tersebut
+ */
+
+/**
+ * Inisialisasi dari komponen program yang dilakukan sebelum memulai
+ * permainan, seperti mengaitkan informasi mengenai console terhadap
+ * handler dan pengaturan agar variable memiliki nilai awal nol.
  */
 void initComponent()
 {
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    // Pembuat nol terhadap nilai dari variable
     memset(&papan, 0, sizeof(papan));
     memset(&sInfo, 0, sizeof(sInfo));
     inputValid = true;
     jeda = false;
     idPapan = 0;
-    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    // Mode pembatalan sistem threading
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    // Memberikan judul pada konsol
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
     SetConsoleTitle("Tic-Tac-Toe Game");
     consoleAttr = consoleInfo.wAttributes;
+    // pemanggilan fungsi untuk inisialisasi directory
     initDirectory();
 }
 
+/**
+ * Inisialisasi folder yang diperlukan oleh program di mana
+ * di mana program dijalankan
+ */
 void initDirectory()
 {
-    char cwd[1000] = {'\000'};    
-    errno = 0;
+    char cwd[1000] = {'\000'};  // Nama lokasi penyimpanan
+    errno = 0;                  // Nilai error yang diberikan
     if (getcwd(cwd, sizeof(cwd)) != NULL)
     {
+        // Apabila lokasi valid maka cari folder //game
         saveCaraMain(cwd);
         memcpy(cwd + strlen(cwd), "\\game", 5);
         int status = mkdir(cwd);
         if (status == -1 && errno != EEXIST)
         {
+            // Apabila terdapat kendala dan folder tidak tersedia, maka tampilkan
+            // perintah untuk melakukan operasi manual kepada pengguna.
             printf("Harap untuk membuat folder 'game' terlebih dahulu");
             printf("\nError Code: %d\n", errno);
             system("pause");
@@ -213,20 +271,22 @@ void initDirectory()
     }
 }
 
+/**
+ * Inisialisasi terkait dengan cara bermain pada file "CaraBermain.txt"
+ */
 void saveCaraMain(char *path)
 {
     int lenPathCara = strlen(path) + 20;
+    // Alokasi memori untuk menyimpan nama lokasi penyimpanan
     char *pathCara = malloc(lenPathCara);
     memset(pathCara, 0, lenPathCara);
     memcpy(pathCara + strlen(pathCara), "CaraBermain.txt", strlen("CaraBermain.txt"));
     FILE *in = fopen(pathCara, "r");
-    if (in)
-    {
-        fclose(in);
-        return;
-    }
+    if (in) fclose(in); // Apabila file sudah ada, maka tutup file
     else
     {
+        // Apabila tidak ada, maka buat file "CaraBermain.txt"
+        // bersamaan dengan kontennya
         fclose(in);
         in = fopen(pathCara, "w");
         fprintf(in, "======================================================");
@@ -252,30 +312,51 @@ void saveCaraMain(char *path)
         fprintf(in, "\n[10.] Pemain bisa memilih tingkat kesulitan yang baru pada menu utama");
         fclose(in);
     }
+    // Dealokasikan memori yang dipesan
+    free(pathCara);
 }
 
+/**
+ * Menghapus screen pada konsol dari output yang ditampilkan
+ */
 void clearConsole()
 {
     system("cls");
 }
 
+/**
+ * Mendapatkan input bertipe char dan mengubahnya pada bentuk uppercase
+ * @param input alamat yang digunakan untuk menyimpan hasil input
+ */
 void getInput(char *input)
 {
     char temp = '\000';
-    fflush(stdin);
+    fflush(stdin);  // menghapus data buffer terlebih dahulu
     scanf(" %c", &temp);
     *input = toupper(temp);
 }
 
+/**
+ * Menampilkan pesan apabila input tidak valid
+ * @param pesan kalimat pesan yang ditampilkan
+ */
 void pesanInvalid(char *pesan)
 {
     if (!inputValid)
     {
         printf("%s", pesan);
+        // Mengubahnya TRUE kembali karena penampilan pesan
+        // sudah terlaksana
         inputValid = true;
     }
 }
 
+/**
+ * Mendapatkan maksud dari nilai yang direpresentasikan oleh
+ * tingkat kesulitan
+ * @param kesulitan nilai tingkat kesulitan
+ * @return kata yang dimaksud oleh tingkat kesulitan
+ */
 char* getKesulitanStr(int kesulitan)
 {
     switch (kesulitan)
@@ -287,6 +368,9 @@ char* getKesulitanStr(int kesulitan)
     }
 }
 
+/**
+ * Tampilan menu utama pada program
+ */
 void menuUtama()
 {
     char input = '\000';
@@ -310,25 +394,30 @@ void menuUtama()
     int opsi = atoi(&input);
     switch (opsi)
     {
-    case 1:
+    case 1: // Opsi mulai permainan
         bagianMain();
         break;
-    case 2:
+    case 2: // Opsi daftar 10 pemain dengan skor tertinggi
         bagianSkor();
         break;
-    case 3:
+    case 3: // Opsi cara bermain
         bagianCara();
         break;
-    case 4:
+    case 4: // Opsi keluar permainan
         bagianKeluar();
         break;
     default:
+        // Apabila opsi tidak valid, maka panggil kembali fungsi ini (rekursif)
+        // dengan keadaan adanya pesan bahwa input tidak valid
 		inputValid = false;
 		menuUtama();
 		break;
     }
 }
 
+/**
+ * Konfigurasi jenis permainan yang akan dimainkan
+ */
 void bagianMain()
 {
     char input = '\000';
@@ -351,11 +440,12 @@ void bagianMain()
     int opsi = atoi(&input);
     switch (opsi)
     {
-    case 1: // permainan baru
+    case 1: // Opsi permainan baru
         setUkuran();
         setModePermainan();
         if (!papan.pemain[0].isKomputer && papan.pemain[1].isKomputer) 
         {
+            // Set nama pemain ke-1 menjadi "Anda" dan pemain ke-2 menjadi "Komputer"
             memset(papan.pemain[0].nama, '\000', sizeof(papan.pemain[0].nama));
             memset(papan.pemain[1].nama, '\000', sizeof(papan.pemain[1].nama));
             memcpy(papan.pemain[0].nama, "Anda", 4);
@@ -375,6 +465,9 @@ void bagianMain()
     setPermainan();
 }
 
+/**
+ * Konfigurasi ukuran untuk permainan baru
+ */
 void setUkuran()
 {
     char input = '\000';
@@ -397,13 +490,13 @@ void setUkuran()
     int pilihanInt = atoi(&input);
     switch (pilihanInt)
     {
-    case 1: // 3 x 3
+    case 1: // Ukuran 3 x 3
         papan.ukuran = 3;
         break;
-    case 2: // 5 x 5
+    case 2: // Ukuran 5 x 5
         papan.ukuran = 5;
         break;
-    case 3: // 7 x 7
+    case 3: // Ukuran 7 x 7
         papan.ukuran = 7;
         break;
     default:
@@ -413,6 +506,9 @@ void setUkuran()
     }
 }
 
+/**
+ * Konfigurasi mode permainan
+ */
 void setModePermainan()
 {
     char input = '\000';
@@ -434,11 +530,11 @@ void setModePermainan()
     int pilihanInt = atoi(&input);
     switch (pilihanInt)
     {
-    case 1: // komputer
-        papan.pemain[0].isKomputer = false;
-        papan.pemain[1].isKomputer = true;
+    case 1: // Mode lawan komputer
+        papan.pemain[0].isKomputer = false; // pemain ke-1 adalah pengguna
+        papan.pemain[1].isKomputer = true;  // pemain ke-2 adalah mutlak komputer
         break;
-    case 2: // multipemain
+    case 2: // Mode multipemain
         papan.pemain[0].isKomputer = false;
         papan.pemain[1].isKomputer = false;
         break;
@@ -449,6 +545,9 @@ void setModePermainan()
     }
 }
 
+/**
+ * Konfigurasi tingkat kesulitan dari komputer
+ */
 void setKomputer()
 {
     char input = '\000';
@@ -471,13 +570,13 @@ void setKomputer()
     int pilihanInt = atoi(&input);
     switch (pilihanInt)
 	{
-	case 1: // mudah
+	case 1: // Tingkat mudah
         papan.kesulitan = 1;
 		break;
-	case 2: // sedang
+	case 2: // Tingkat sedang
         papan.kesulitan = 2;
 		break;
-	case 3: // sulit
+	case 3: // Tingkat sulit
         papan.kesulitan = 3;
 		break;
 	default:
@@ -487,6 +586,9 @@ void setKomputer()
 	}
 }
 
+/**
+ * Konfigurasi nama pemain pertama dan kedua untuk mode multipemain
+ */
 void setMultipemain()
 {
     char input = '\000';
@@ -550,6 +652,9 @@ void setMultipemain()
 	}
 }
 
+/**
+ * Penghapusan seluruh data permainan lama
+ */
 void menuHapusPermainan()
 {
     clearConsole();
@@ -558,24 +663,30 @@ void menuHapusPermainan()
     printf("\n======================================================");
     printf("\n");
     printf("\nApakah anda ingin menghapus semua data permainan?");
-    printf("\nTekan 'Enter' untuk setuju atau 'Esc' untuk ke menu utama");
+    printf("\nTekan 'Enter' untuk setuju atau 'Esc' untuk ke menu utama"); // pesan konfirmasi
     while (true)
     {
+        // Lakukan loop sampai input dapat diproses
         fflush(stdin);
         char input = getch();
+        // Apabila 'Enter', maka hapus data permainan
         if ((int)input == KEYBOARD_ENTER)
         {
             int i;
-            for (i = 1; i <= 5; i++)
+            for (i = 1; i <= MAX_SAVEGAME; i++)
             {
                 int status = deletePermainan(i);
             }
             return bagianMain();
         }
+        // Apabila 'Esc', maka kembali
         else if ((int)input == KEYBOARD_ESC) return setPermainanLama();
     }
 }
 
+/**
+ * Konfigurasi data permainan lama
+ */
 void setPermainanLama()
 {
     char input = '\000';
@@ -591,12 +702,14 @@ void setPermainanLama()
     pesanInvalid("\nPilihan data permainan tidak valid");
     printf("\nMasukkan pilihan: ");
     getInput(&input);
-    if (input == 'Q') return bagianMain();
-    else if (input == 'D') return menuHapusPermainan();
+    if (input == 'Q') return bagianMain();  // Kembali
+    else if (input == 'D') return menuHapusPermainan(); // Hapus semua data
     
     int pilihanInt = atoi(&input);
     if (pilihanInt > 0 && pilihanInt <= MAX_SAVEGAME)
     {
+        // Apabila pengguna memilih melanjutkan, maka muat data
+        // berdasarkan nilai (ID) yang dipilih
         if (imporPermainan(pilihanInt, &papan) == 0)
         {
             idPapan = pilihanInt;
@@ -607,6 +720,9 @@ void setPermainanLama()
     return setPermainanLama();
 }
 
+/**
+ * Menampilkan data permainan lama yang tersedia
+ */
 void showPermainanLama()
 {
     int i = 0;
@@ -619,6 +735,12 @@ void showPermainanLama()
     }
 }
 
+/**
+ * Impor data permainan lama
+ * @param pos posisi (ID) data penyimpanan
+ * @param pPapan variable untuk menampung hasil impor
+ * @return 0 jika berhasil, 1 jika error
+ */
 int imporPermainan(int pos, Papan* pPapan)
 {
     int pPapanSize = sizeof(*pPapan);
@@ -641,6 +763,11 @@ int imporPermainan(int pos, Papan* pPapan)
     return 0;
 }
 
+/**
+ * Simpan data permainan lama
+ * @param pos posisi (ID) data penyimpanan
+ * @return 0 jika berhasil, 1 jika error
+ */
 int savePermainan(int pos)
 {
     int papanSize = sizeof(papan);
@@ -666,6 +793,11 @@ int savePermainan(int pos)
     return 0;
 }
 
+/**
+ * Hapus data permainan lama
+ * @param pos posisi (ID) data penyimpanan
+ * @return 0 jika berhasil, 1 jika error
+ */
 int deletePermainan(int pos)
 {
     char fileData[255] = {'\000'};
@@ -676,6 +808,11 @@ int deletePermainan(int pos)
     return remove(fileData);
 }
 
+/**
+ * Membalikkan nilai pada array. Contohnya nilai array [10][12] menjadi [12][10]
+ * @param data nilai array yang dimaksudkan
+ * @param length panjang dari nilai yang akan dibalik
+ */
 void reverse(char* data, int length)
 {
     int i = 0;
@@ -691,6 +828,9 @@ void reverse(char* data, int length)
     }
 }
 
+/**
+ * "Persiapan" sebelum memulai permainan
+ */
 void setPermainan()
 {
     char input = '\000';
@@ -723,17 +863,21 @@ void setPermainan()
     }
 }
 
+/**
+ * Pusat kendali ketika permainan dimulai
+ */
 void mulaiPermainan()
 {
     bool sesuai = true;
     papan.giliran = 1;
-    papan.isBermain = true;
+    int giliran = papan.giliran;
     papan.pemain[0].simbol = SIMBOL_P1;
     papan.pemain[1].simbol = SIMBOL_P2;
     memset(papan.isi, '\000', sizeof(papan.isi));
     do
     {
         jeda = false;
+        // Pengaturan waktu
         papan.waktu = GAME_TIMER;
         papan.giliran = (papan.giliran == 1)? 0 : 1;
         pthread_create(&thGame, NULL, threadPermainan, NULL);
@@ -760,11 +904,14 @@ void mulaiPermainan()
         sesuai = cekPapan(simbol);
     }
     while (sesuai);
-    
+    // Apabila kondisi sudah dapat dinyatakan MENANG, KALAH, atau SERI
+    // maka selanjutnya adalah memproses kondisi tersebut dan menampilkan
+    // menu game over
     int status;
     if (papan.giliran == 2) status = 2;
-    else if (!cekPapan(SIMBOL_P1)) 
+    else if (!cekPapan(SIMBOL_P1) && papan.pemain[1].isKomputer == true) 
     {
+        // Skor bertambah bagi pemain pertama apabila menang
         status = 0;
         papan.pemain[0].skor += 100;
     }
@@ -772,52 +919,66 @@ void mulaiPermainan()
     menuGameOver(status);
 }
 
+/**
+ * Pengaturan bagaimana timer bekerja
+ */
 void* threadTimer()
 {
+    // Diberikan toleransi waktu satu detik
     papan.waktu++;
     while (papan.waktu > -1)
     {
         if (jeda) continue;
         papan.waktu--;
-        sleep(1);
+        sleep(1); // Delay satu detik untuk setiap pengurangan waktu tersisa
     }
     return NULL;
 }
 
+/**
+ * Operasi ketika permainan dilakukan
+ */
 void* threadPermainan()
 {
     char input[5] = {'\000'};
     do
     {
-        if (papan.waktu == -2) break;
+        // Jika pemain memilih untuk keluar, maka hentikan loop
+        if (papan.waktu == KELUAR) break;
         clearConsole();
         printf("======================================================");
         printf("\nPermainan %d x %d (%s vs %s)", papan.ukuran, papan.ukuran, papan.pemain[0].nama, papan.pemain[1].nama);
         printf("\n======================================================");
         printf("\n");
+        // Jika permainan dijeda, maka panggil modul jeda permainan
         if (jeda) jedaPermainan();
         else
         {
             int posPapan = 0;
             showPapan(true);
+            // Tampilkan skor apabila mode permainan melawan komputer
             if (papan.pemain[1].isKomputer) printf("\nSkor: %d", papan.pemain[0].skor);
             printf("\nQ: Ke menu utama");
             printf("\n");
             printf("\n[Giliran %s]", papan.pemain[papan.giliran].nama);
             pesanInvalid("\nPosisi petak tidak valid");
+            // Apabila giliran komputer (papan.giliran = 1) perlu melakukan
+            // untuk mendapatkan pilihan posisi dari komputer
             if (papan.pemain[papan.giliran].isKomputer)
             {
                 printf("\nMenunggu giliran %s ...", papan.pemain[papan.giliran].nama);
                 posPapan = getInputKomputer();
                 papan.waktu = SELESAI;
                 sleep(1);
-                setIsi(posPapan, papan.pemain[papan.giliran].simbol);
+                papan.pemain[papan.giliran].input = posPapan;
                 pthread_cancel(thTimer);
                 papan.waktu = SELESAI;
                 break;
             }
             else
             {
+                // Apabila giliran pengguna (bukan komputer), maka perlu memasukkan
+                // input posisi petak yang akan diisi dengan simbol miliknya
                 if (papan.waktu >= 0) printf("\nMasukkan posisi petak dalam waktu %d detik: ", papan.waktu);
                 else printf("\nWaktu habis, masukkan posisi petak manapun untuk melanjutkan: ");
                 fgets(input, 4, stdin);
@@ -828,6 +989,7 @@ void* threadPermainan()
                 posPapan = atoi(input);
                 if (strcmp(input, "Q") == 0)
                 {
+                    // Permainan dijeda terlebih dahulu ketika pemain memilih keluar
                     jeda = true;
                     continue;
                 }
@@ -848,6 +1010,9 @@ void* threadPermainan()
     return NULL;
 }
 
+/**
+ * Bagian jeda permainan
+ */
 void jedaPermainan()
 {
     clearConsole();
@@ -864,6 +1029,7 @@ void jedaPermainan()
         fflush(stdin);
 
         char input = getch();
+        // Opsi 'Enter' untuk keluar permainan
         if ((int)input == KEYBOARD_ENTER)
         {
             pthread_cancel(thTimer);
@@ -871,28 +1037,42 @@ void jedaPermainan()
             jeda = false;
             break;
         }
-        if ((int)input == KEYBOARD_ESC)
+        // Opsi 'Esc' untuk melanjutkan permainan
+        else if ((int)input == KEYBOARD_ESC)
         {
+            // Permainan kembali dilanjutkan
             jeda = false;
             break;
         }
     }
 }
 
+/**
+ * Minimal jumlah simbol sama yang berdampingan yang diperlukan untuk
+ * dikategorikan pada status menang
+ * @param ukuran ukuran dari papan permainan
+ * @return total simbol yang diperlukan
+ */
 int cekMinimal(int ukuran)
 {
     switch (ukuran)
     {
-    case 3: return 3;
-    case 5: return 4;
-    case 7: return 5;
+    case 3: return 3; // 3 simbol pada papan 3x3
+    case 5: return 4; // 4 simbol pada papan 5x5
+    case 7: return 5; // 5 simbol pada papan 7x7
     }
     return 0;
 }
 
+/**
+ * Cek ketersediaan petak yang kosong pada papan permainan
+ * @param simbol simbol pemain
+ * @return TRUE jika papan masih bisa diisi, FALSE jika papan tidak lagi dapat diisi
+ */
 bool cekPapan(char simbol)
 {
     if (cekDiagonal(simbol) || cekHorizontal(simbol) || cekVertikal(simbol)) return false;
+    // Jika tidak ada petak kosong yang tersisa, maka permainan seri
     else if (getTotalKosong() == 0) 
     {
         papan.giliran = 2;
@@ -901,6 +1081,11 @@ bool cekPapan(char simbol)
     else return true;
 }
 
+/**
+ * Cek papan secara diagonal untuk mendeterminasi status permainan
+ * @param simbol simbol yang dicek
+ * @return TRUE jika secara diagonal telah sesuai, FALSE jika tidak sesuai
+ */
 bool cekDiagonal(char simbol)
 {
     int cek = cekMinimal(papan.ukuran);
@@ -985,6 +1170,11 @@ bool cekDiagonal(char simbol)
     return false;
 }
 
+/**
+ * Cek papan secara horizontal untuk mendeterminasi status permainan
+ * @param simbol simbol yang dicek
+ * @return TRUE jika secara horizontal telah sesuai, FALSE jika tidak sesuai
+ */
 bool cekHorizontal(char simbol)
 {
 	int cek = cekMinimal(papan.ukuran);
@@ -1006,6 +1196,11 @@ bool cekHorizontal(char simbol)
 	return false;
 }
 
+/**
+ * Cek papan secara diagonal untuk mendeterminasi status permainan
+ * @param simbol simbol yang dicek
+ * @return TRUE jika secara diagonal telah sesuai, FALSE jika tidak sesuai
+ */
 bool cekVertikal(char simbol)
 {
 	int cek = cekMinimal(papan.ukuran);
@@ -1027,6 +1222,9 @@ bool cekVertikal(char simbol)
 	return false;
 }
 
+/**
+ * Menampilkan papan permainan
+ */
 void showPapan(bool tampilPosisi)
 {
     int isi = 1;
@@ -1035,11 +1233,12 @@ void showPapan(bool tampilPosisi)
     int isiLen = panjangAngka(maxIsi);
     int i, j;
     int posIsi = 2;
+    // Loop setiap barisnya
     for (i = 0; i < maxVertikal + 1; i++)
     {
         bool bisaDiisi = false;
         char cTulisAwal = '|';
-
+        // baris yang bisa diisi adalah kelipatan 3 dimulai dari 2 (posIsi)
         if (i == posIsi)
         {
             bisaDiisi = true;
@@ -1050,6 +1249,7 @@ void showPapan(bool tampilPosisi)
             if (i == 0) cTulisAwal = ' ';
             else cTulisAwal = '|';
         }
+        // Loop untuk konten setiap konten pada petak, seperti "____ ", " 1 |", atau "____|"
         for (j = 0; j < papan.ukuran; j++)
         {
             int maxLenIsi = isiLen + 3;
@@ -1085,12 +1285,14 @@ void showPapan(bool tampilPosisi)
             int k = 0;
             for (k = 0; k < strlen(cGaris); k++)
             {
+                // Pemberian warna merah apabila simbolnya sama dengan simbol pemain ke-1
                 if (cGaris[k] == SIMBOL_P1)
                 {
                     SetConsoleTextAttribute(hConsole, 12);
                     printf("%c", cGaris[k]);
                     SetConsoleTextAttribute(hConsole, consoleAttr);
                 }
+                // Pemberian warna hijau apabila simbolnya sama dengan simbol pemain ke-2
                 else if (cGaris[k] == SIMBOL_P2)
                 {
                     SetConsoleTextAttribute(hConsole, 10);
@@ -1101,10 +1303,17 @@ void showPapan(bool tampilPosisi)
             }
             free(cGaris);
         }
+        // Baris baru
         printf("\n");
     }
 }
 
+/**
+ * Mendapatkan panjang dari suatu angka
+ * Misalnya 2 untuk angka 20, atau 3 untuk angka 100
+ * @param angka angka yang digunakan untuk mencari panjangnya
+ * @return panjang angka
+ */
 int panjangAngka(int angka)
 {
     int len = 0;
@@ -1117,18 +1326,33 @@ int panjangAngka(int angka)
     return len;
 }
 
+/**
+ * Mendapatkan isi petak permainan berdasarkan posisi petak tersebut
+ * (bukan dari array 2 dimensi)
+ * @param pos posisi yang dituju
+ * @return karakter yang mengisinya
+ */
 char getIsi(int pos)
 {
     pos--;
     return papan.isi[pos/papan.ukuran][pos%papan.ukuran];
 }
 
+/**
+ * Mengisi petak permainan berdasarkan posisi petak tersebut
+ * @param pos posisi yang dituju
+ * @param nilai nilai yang akan diisinya
+ */
 void setIsi(int pos, char nilai)
 {
     pos--;
     papan.isi[pos/papan.ukuran][pos%papan.ukuran] = nilai;
 }
 
+/**
+ * Mengonversi array-of-char (string) ke bentuk kapital
+ * @param data array-of-char yang dituju
+ */
 void upperCase(char *data)
 {
     int i = 0;
@@ -1138,52 +1362,79 @@ void upperCase(char *data)
     }
 }
 
+/**
+ * Batasan jangkauan yang bisa diprediksi oleh komputer
+ * @param kesulitan tingkat kesulitan pada permainan
+ * @param ukuran ukuran papan permainan
+ * @return batasan jangkauan
+ */
 int getJangkauan(int kesulitan, int ukuran)
 {
     switch (kesulitan)
     {
-    case 2: // sedang
-        if (ukuran == 3) return 2;
-        if (ukuran == 5) return 2;
-        if (ukuran == 7) return 2;
-    case 3: // sulit
-        if (ukuran == 3) return 4;
-        if (ukuran == 5) return 4;
-        if (ukuran == 7) return 3;
+    case 2:
+    // Tingkat sedang
+        if (ukuran == 3) return 2; // ukuran papan 3x3
+        if (ukuran == 5) return 2; // ukuran papan 5x5
+        if (ukuran == 7) return 2; // ukuran papan 7x7
+    case 3:
+    // Tingkat sulit
+        if (ukuran == 3) return 4; // ukuran papan 3x3
+        if (ukuran == 5) return 4; // ukuran papan 5x5
+        if (ukuran == 7) return 3; // ukuran papan 7x7
     default: return 0;
     }
 }
 
+/**
+ * Mendapatkan input yang dilakukan oleh komputer dalam mengisi
+ * petak pada papan permainan.
+ * @return posisi petak yang dipilih komputer
+ */
 int getInputKomputer()
 {
     int input = 0;
     int jangkauan = getJangkauan(papan.kesulitan, papan.ukuran);
     switch (papan.kesulitan)
     {
-    case 1: // mudah
+    case 1: // Tingkat mudah
         input = isiAcak();
         break;
-    case 2: // sedang
+    case 2: // Tingkat sedang
         input = isiKritis(jangkauan);
         break;
-    case 3: // sulit
+    case 3: // Tingkat sulit
         input = isiKritis(jangkauan);
         break;
     }
     return input;
 }
 
+/**
+ * Mendapatkan posisi acak untuk mengisi papan permainan
+ * @return posisi acak
+ */
 int isiAcak()
 {
     srand(time(NULL));
-    int max = papan.ukuran * papan.ukuran;
+    int range = papan.ukuran * papan.ukuran;
     int min = 1;
     int pos = 0;
-    do { pos = (rand() % (max - min)) + min; }
+    do { pos = (rand() % range) + min; }
     while (getIsi(pos) != '\000');
     return pos;
 }
 
+/**
+ * Algoritma minimax untuk memprediksi gerakan selanjutnya yang digunakan
+ * untuk mendapatkan posisi terbaik
+ * @param isMax jika pemain yang memaksimalkan kemenangan adalah komputer
+ * @param jangakauan total jangkauan yang sudah dilakukan
+ * @param alpha alpha
+ * @param beta beta
+ * @param maxJangkauan batasan jangkauan yang perlu dilakukan
+ * @return skor terbaik pada posisi terkait
+ */
 int minimax(bool isMax, int jangkauan, int alpha, int beta, int maxJangkauan)
 {
     int giliranLawan = (papan.giliran == 1)? 0 : 1;
@@ -1236,6 +1487,11 @@ int minimax(bool isMax, int jangkauan, int alpha, int beta, int maxJangkauan)
     }
 }
 
+/**
+ * Mendapatkan posisi kritis untuk mengisi papan permainan
+ * @param maxJangkauan batasan jangkauan yang perlu dilakukan
+ * @return posisi petak yang bernilai kritis
+ */
 int isiKritis(int maxJangkauan)
 {
     if (
@@ -1271,6 +1527,10 @@ int isiKritis(int maxJangkauan)
     return parsePosisi(posX, posY);
 }
 
+/**
+ * Determinasi apabila petak masih bisa diisi atau tidak
+ * @return TRUE jika masih bisa diisi, FALSE jika tidak bisa
+ */
 bool isBisaDiisi()
 {
     int i, j;
@@ -1284,6 +1544,12 @@ bool isBisaDiisi()
     return false;
 }
 
+/**
+ * Mengubah koordinat (x, y) pada array menjadi posisi petak pada papan permainan
+ * @param x posisi absis [X][...]
+ * @param y posisi ordinat [...][Y]
+ * @return posisi petak pada permainan
+ */
 int parsePosisi(int x, int y)
 {
     int hasil = 0;
@@ -1299,6 +1565,10 @@ int parsePosisi(int x, int y)
     return 0;
 }
 
+/**
+ * Mendapatkan jumlah petak yang kosong pada papan permainan
+ * @return jumlah petak yang kosong
+ */
 int getTotalKosong()
 {
     int counter = 0;
@@ -1310,6 +1580,10 @@ int getTotalKosong()
     return counter;
 }
 
+/**
+ * Sajian ketika pemain berhasil memenangkan permainan melawan komputer
+ * @param status index pemenang dari permainan (0 = pemain ke-1, 1 = pemain ke-2)
+ */
 void menuMenang(int status)
 {
     char input = '\000';
@@ -1339,6 +1613,12 @@ void menuMenang(int status)
     menuMenang(status);
 }
 
+
+/**
+ * Menampilkan menu untuk menyimpan skor pemain ketika kalah dan skor
+ * pemain melampaui skor yang ada di daftar 10 pemain dengan skor tertinggi
+ * yang ditampilkan apabila pemain ingin menyimpan skornya
+ */
 void menuSaveSkor()
 {
     int skor = papan.pemain[0].skor;
@@ -1379,6 +1659,10 @@ void menuSaveSkor()
     }
 }
 
+/**
+ * Sajian ketika pemain kalah dalam permainan melawan komputer
+ * @param status index pemenang dari permainan (0 = pemain ke-1, 1 = pemain ke-2)
+ */
 void menuKalah(int status)
 {
     char input = '\000';
@@ -1411,6 +1695,10 @@ void menuKalah(int status)
     }
 }
 
+/**
+ * Sajian ketika pemain mendapatkan hasil yang seri ketika melawan komputer
+ * @param status index pemenang dari permainan (0 = pemain ke-1, 1 = pemain ke-2)
+ */
 void menuSeri(int status)
 {
     char input = '\000';
@@ -1436,6 +1724,11 @@ void menuSeri(int status)
     }
 }
 
+/**
+ * Menu yang ditampilkan apabila pemain ingin menyimpan permainannya
+ * untuk mode permainan melawan komputer, digunakan untuk meminta pilihan
+ * lokasi (ID) yang digunakan untuk menyimpannya
+ */
 void menuSimpan()
 {
     char input = '\000';
@@ -1462,6 +1755,11 @@ void menuSimpan()
     }
 }
 
+/**
+ * Proses selanjutnya setelah memilih pilihan lokasi yang digunakan untuk
+ * menyimpan menu permainan
+ * @param posisi posisi (ID) di mana permainan disimpan
+ */
 void menuSimpanSiap(int posisi)
 {
     Papan temp;
@@ -1495,6 +1793,9 @@ void menuSimpanSiap(int posisi)
     if (status == 0) return menuSimpanSelesai();
 }
 
+/**
+ * Menu yang ditampilkan ketika permainan telah disimpan
+ */
 void menuSimpanSelesai()
 {
     char input = '\000';
@@ -1508,7 +1809,7 @@ void menuSimpanSelesai()
     printf("\nData permainan ini telah disimpan");
     printf("\nLabel Papan       : %s", papan.nama);
     printf("\nTingkat Kesulitan : %s", kesulitan);
-    printf("\nUkuran Papan      : %d x %d", papan.kesulitan, papan.kesulitan);
+    printf("\nUkuran Papan      : %d x %d", papan.ukuran, papan.ukuran);
     printf("\nQ: Ke menu utama | R: Lanjutkan Permainan");
     printf("\n");
     pesanInvalid("\nPilihan anda tidak valid");
@@ -1528,6 +1829,11 @@ void menuSimpanSelesai()
     }
 }
 
+/**
+ * Menu yang ditampilkan ketika permainan berakhir pada mode permainan
+ * multipemain
+ * @param status index pemenang dari permainan (0 = pemain ke-1, 1 = pemain ke-2)
+ */
 void menuMultipemain(int status)
 {
     char input = '\000';
@@ -1561,6 +1867,10 @@ void menuMultipemain(int status)
     }
 }
 
+/**
+ * Menu yang ditampilkan ketika permainan berakhir
+ * @param status index pemenang dari permainan (0 = pemain ke-1, 1 = pemain ke-2)
+ */
 void menuGameOver(int status)
 {
     clearConsole();
@@ -1586,6 +1896,10 @@ void menuGameOver(int status)
     else menuMultipemain(status);
 }
 
+/**
+ * Bagian yang ditampilkan ketika pengguna memilih untuk melihat
+ * cara bermain pada permainan ini
+ */
 void bagianCara()
 {
     char input = '\000';
@@ -1611,6 +1925,9 @@ void bagianCara()
     }
 }
 
+/**
+ * Menampilkan data skor yang tersimpan pada file
+ */
 void showSkor()
 {
     memset(sInfo, 0, sizeof(sInfo));
@@ -1624,6 +1941,10 @@ void showSkor()
     }
 }
 
+/**
+ * Menu yang digunakan untuk menampilkan bagian daftar 10 pemain dengan
+ * skor tertinggi
+ */
 void bagianSkor()
 {
     char input = '\000';
@@ -1649,6 +1970,11 @@ void bagianSkor()
 	}
 }
 
+/**
+ * Mengimpor data skor yang digunakan untuk menampilkan daftar 10 pemain
+ * dengan skor tertinggi yang tersimpan pada file
+ * @return 0 jika sukses, 1 jika gagal
+ */
 int imporSkor()
 {
     int skorSize = sizeof(sInfo);
@@ -1670,6 +1996,11 @@ int imporSkor()
     return 0;
 }
 
+/**
+ * Menambahkan skor terbaru pada daftar 10 pemain dengan skor tertinggi
+ * dan menyimpannya pada file
+ * @return 0 jika sukses, 1 jika gagal
+ */
 int saveSkor()
 {
     memset(sInfo[9].nama, 0, sizeof(sInfo[9].nama));
@@ -1697,6 +2028,10 @@ int saveSkor()
     return 0;
 }
 
+/**
+ * Menyortir daftar 10 pemain dengan skor tertinggi terurut berdasarkan
+ * skor tertinggi (terurut dari yang lebih dahulu tersimpannya)
+ */
 void sortSkor()
 {
     SkorInfo temp;
@@ -1730,6 +2065,11 @@ void sortSkor()
     }
 }
 
+/**
+ * Menghapus file yang digunakan untuk menyimpan daftar 10 pemain
+ * dengan skor tertinggi
+ * @return 0 jika sukses, selain itu gagal
+ */
 int deleteSkor()
 {
     char fileData[255] = {'\000'};
@@ -1739,6 +2079,11 @@ int deleteSkor()
     return remove(fileData);
 }
 
+/**
+ * Menu yang digunakan sebagai penyampaian pesan konfirmasi sebelum
+ * semua daftar 10 pemain dengan skor tertinggi terhapus (sebelum file
+ * yang digunakan untuk menyimpan data tersebut dihapus)
+ */
 void menuHapusSkor()
 {
     clearConsole();
@@ -1761,6 +2106,10 @@ void menuHapusSkor()
     }
 }
 
+/**
+ * Menampilkan pesan konfirmasi ketika pengguna ingin keluar dari
+ * permainan (program)
+ */
 void bagianKeluar()
 {
     char input = '\000';
@@ -1774,13 +2123,20 @@ void bagianKeluar()
     while (true)
     {
         fflush(stdin);
-
         char input = getch();
         if ((int)input == KEYBOARD_ENTER) exit(0);
         if ((int)input == KEYBOARD_ESC) return menuUtama();
     }
 }
 
+/**
+ * Bagian dari fungsi minimax, digunakan untuk mengevaluasi papan permainan
+ * sehingga dapat memberikan hasil skor yang didapatkan ketika diisi oleh
+ * simbol pemain di mana menentukan kondisi pada permainan.
+ * @return 10 jika hasilnya pemain ke-1 yang menang,
+ * -10 jika hasilnya adalah pemain ke-2 yang menang,
+ * 0 ketika hasilnya seri
+ */
 int eval()
 {
     int giliran = papan.giliran;
